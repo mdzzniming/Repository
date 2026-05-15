@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>师傅经济系统原型 v2.0</title>
+
+    <style>
+
+        :root {
+
+            --blood: #8b0000;
+
+            --ink: #050505;
+
+            --paper: #b0b0b0;
+
+            --gold: #b8860b;
+
+            --danger: #ff4500;
+
+        }
+
+
+
+        body {
+
+            background-color: var(--ink);
+
+            color: var(--paper);
+
+            font-family: "Noto Sans SC", sans-serif;
+
+            margin: 0;
+
+            display: flex;
+
+            height: 100vh;
+
+            overflow: hidden;
+
+        }
+
+
+
+        /* 侧边栏 */
+
+        .sidebar {
+
+            width: 340px;
+
+            background: linear-gradient(180deg, #111 0%, #000 100%);
+
+            border-right: 2px solid #222;
+
+            padding: 30px 20px;
+
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 20px;
+
+        }
+
+
+
+        .age-container {
+
+            text-align: center;
+
+            border: 1px solid #333;
+
+            padding: 20px;
+
+            background: rgba(139, 0, 0, 0.05);
+
+        }
+
+
+
+        .age-val { font-size: 72px; color: var(--blood); font-weight: 900; line-height: 1; }
+
+        .death-counter { color: var(--danger); font-size: 14px; letter-spacing: 3px; margin-top: 5px; }
+
+
+
+        .weapon-slot {
+
+            background: #1a1a1a;
+
+            border: 1px dashed var(--gold);
+
+            padding: 15px;
+
+            min-height: 80px;
+
+            position: relative;
+
+        }
+
+
+
+        .durability-bar {
+
+            height: 4px;
+
+            background: #333;
+
+            margin-top: 10px;
+
+            position: relative;
+
+        }
+
+
+
+        .durability-fill { height: 100%; background: var(--gold); transition: width 0.3s; }
+
+
+
+        /* 主舞台 */
+
+        .main-stage { flex: 1; display: flex; flex-direction: column; position: relative; }
+
+
+
+        .boss-list {
+
+            flex: 1;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            gap: 15px;
+
+            padding: 20px;
+
+        }
+
+
+
+        .boss-card {
+
+            width: 130px;
+
+            height: 220px;
+
+            background: #111;
+
+            border: 1px solid #333;
+
+            position: relative;
+
+            transition: 0.5s;
+
+            filter: grayscale(1) blur(1px);
+
+        }
+
+
+
+        .boss-card.active { border-color: var(--blood); filter: grayscale(0) blur(0); box-shadow: 0 0 20px rgba(139, 0, 0, 0.2); }
+
+        .boss-card.defeated { filter: grayscale(1) opacity(0.3); }
+
+        .boss-card.defeated::after { content: "✕"; position: absolute; top: 40%; left: 30%; font-size: 80px; color: var(--blood); opacity: 0.6; }
+
+
+
+        .difficulty-tag { font-size: 10px; position: absolute; bottom: 5px; width: 100%; text-align: center; color: #666; }
+
+
+
+        /* 商店与操作 */
+
+        .market {
+
+            background: #0a0a0a;
+
+            border-top: 2px solid var(--blood);
+
+            padding: 20px 40px;
+
+            display: grid;
+
+            grid-template-columns: 1fr 1fr 1fr;
+
+            gap: 20px;
+
+        }
+
+
+
+        .btn-group { display: flex; flex-direction: column; gap: 8px; }
+
+
+
+        button {
+
+            background: transparent;
+
+            color: var(--paper);
+
+            border: 1px solid #444;
+
+            padding: 10px;
+
+            cursor: pointer;
+
+            transition: 0.2s;
+
+            font-size: 13px;
+
+        }
+
+
+
+        button:hover:not(:disabled) { background: var(--blood); border-color: #fff; }
+
+        button:disabled { opacity: 0.2; cursor: not-allowed; }
+
+
+
+        .strike-btn {
+
+            background: var(--blood);
+
+            font-size: 20px;
+
+            font-weight: bold;
+
+            letter-spacing: 5px;
+
+            border: none;
+
+            height: 100%;
+
+        }
+
+
+
+        #log {
+
+            position: absolute;
+
+            right: 20px;
+
+            top: 20px;
+
+            width: 280px;
+
+            height: 200px;
+
+            background: rgba(0,0,0,0.8);
+
+            border: 1px solid #222;
+
+            padding: 10px;
+
+            font-size: 11px;
+
+            color: #888;
+
+            overflow-y: hidden;
+
+        }
+
+
+
+        .log-entry { margin-bottom: 5px; border-left: 2px solid #333; padding-left: 5px; }
+
+    </style>
+
+</head>
+
+<body>
+
+
+
+<div class="sidebar">
+
+    <div class="age-container">
+
+        <div class="age-val" id="age">20</div>
+
+        <div class="death-counter" id="death-count">DEATH COUNT: 0</div>
+
+    </div>
+
+
+
+    <div class="stat-card">
+
+        <div style="font-size: 12px; color: #555;">持有金元</div>
+
+        <div style="font-size: 24px; color: var(--gold);" id="money">￥200</div>
+
+    </div>
+
+
+
+    <div class="weapon-slot">
+
+        <div style="font-size: 11px; color: #666;">当前装备</div>
+
+        <div id="weapon-name" style="font-size: 18px; margin: 5px 0;">赤手空拳</div>
+
+        <div class="durability-bar">
+
+            <div class="durability-fill" id="dur-fill" style="width: 0%"></div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="btn-group">
+
+        <button onclick="buyWeapon('stick')">购买木棍 (￥100) | 胜率+8%</button>
+
+        <button onclick="buyWeapon('pipe')">购买钢管 (￥250) | 胜率+15%</button>
+
+        <button onclick="buyWeapon('blade')">购买大刀 (￥600) | 胜率+25%</button>
+
+    </div>
+
+</div>
+
+
+
+<div class="main-stage">
+
+    <div id="log"></div>
+
+
+
+    <div class="boss-list">
+
+        <div class="boss-card active" id="b0">
+
+            <div style="text-align:center; margin-top:20px;">Fajar<br><small>药师</small></div>
+
+            <div class="difficulty-tag">威胁度: 低</div>
+
+        </div>
+
+        <div class="boss-card" id="b1">
+
+            <div style="text-align:center; margin-top:20px;">Sean<br><small>斗士</small></div>
+
+            <div class="difficulty-tag">威胁度: 中</div>
+
+        </div>
+
+        <div class="boss-card" id="b2">
+
+            <div style="text-align:center; margin-top:20px;">Kuroki<br><small>艺术家</small></div>
+
+            <div class="difficulty-tag">威胁度: 高</div>
+
+        </div>
+
+        <div class="boss-card" id="b3">
+
+            <div style="text-align:center; margin-top:20px;">Jinfeng<br><small>CEO</small></div>
+
+            <div class="difficulty-tag">威胁度: 极高</div>
+
+        </div>
+
+        <div class="boss-card" id="b4">
+
+            <div style="text-align:center; margin-top:20px;">Yang<br><small>大师</small></div>
+
+            <div class="difficulty-tag">威胁度: 绝望</div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="market">
+
+        <div class="btn-group">
+
+            <button onclick="buyIntel()">搜集情报 (￥80) | 胜率+10%</button>
+
+            <button onclick="resetDeaths()">祭坛祈愿 (￥400) | 重置死亡计数</button>
+
+            <div style="font-size: 11px; margin-top: 5px; color: #555;">
+
+                *情报转化率随年龄增长衰减
+
+            </div>
+
+        </div>
+
+        <div style="text-align: center;">
+
+            <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+
+                当前胜算预测: <span id="win-rate" style="color:var(--paper)">--</span>
+
+            </div>
+
+            <button class="strike-btn" onclick="strike()">发起突袭</button>
+
+        </div>
+
+        <div style="padding-left: 20px; font-size: 12px; border-left: 1px solid #222;">
+
+            <span style="color:var(--gold)">情报等级:</span> <span id="intel-val">0</span>%<br>
+
+            <span style="color:var(--danger)">关卡抗性:</span> <span id="resist-val">0</span>%<br>
+
+            <span style="color:var(--paper)">复仇进度:</span> <span id="prog-val">0/5</span>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+    const BOSS_BASE_RATES = [70, 50, 35, 20, 10];
+
+   
+
+    let state = {
+
+        age: 20,
+
+        money: 300,
+
+        deathCount: 0,
+
+        intel: 0,
+
+        currentBoss: 0,
+
+        weapon: null // { name, bonus, dur, maxDur }
+
+    };
+
+
+
+    function addLog(msg, color="#888") {
+
+        const log = document.getElementById('log');
+
+        const entry = document.createElement('div');
+
+        entry.className = 'log-entry';
+
+        entry.style.color = color;
+
+        entry.innerText = `[${state.age}岁] ${msg}`;
+
+        log.prepend(entry);
+
+    }
+
+
+
+    function calculateWinRate() {
+
+        let base = BOSS_BASE_RATES[state.currentBoss];
+
+        // 年龄影响：过老（50+）导致反应下降，每岁减0.5%
+
+        let agePenalty = state.age > 50 ? (state.age - 50) * 0.8 : 0;
+
+        // 情报加成：受年龄衰减
+
+        let intelEfficiency = state.age > 60 ? 0.5 : 1.0;
+
+        let intelBonus = state.intel * intelEfficiency;
+
+        // 武器加成
+
+        let weaponBonus = state.weapon ? state.weapon.bonus : 0;
+
+
+
+        return Math.max(5, Math.min(95, base + intelBonus + weaponBonus - agePenalty));
+
+    }
+
+
+
+    function updateUI() {
+
+        document.getElementById('age').innerText = state.age;
+
+        document.getElementById('money').innerText = "￥" + state.money;
+
+        document.getElementById('death-count').innerText = "DEATH COUNT: " + state.deathCount;
+
+        document.getElementById('intel-val').innerText = state.intel;
+
+        document.getElementById('win-rate').innerText = calculateWinRate().toFixed(0) + "%";
+
+        document.getElementById('prog-val').innerText = state.currentBoss + "/5";
+
+        document.getElementById('resist-val').innerText = (100 - BOSS_BASE_RATES[state.currentBoss]);
+
+
+
+        // 武器
+
+        if(state.weapon) {
+
+            document.getElementById('weapon-name').innerText = state.weapon.name;
+
+            document.getElementById('weapon-name').style.color = "var(--gold)";
+
+            document.getElementById('dur-fill').style.width = (state.weapon.dur / state.weapon.maxDur * 100) + "%";
+
+        } else {
+
+            document.getElementById('weapon-name').innerText = "赤手空拳";
+
+            document.getElementById('weapon-name').style.color = "#666";
+
+            document.getElementById('dur-fill').style.width = "0%";
+
+        }
+
+
+
+        // Boss 卡片
+
+        for(let i=0; i<5; i++) {
+
+            let b = document.getElementById('b'+i);
+
+            b.className = "boss-card";
+
+            if(i < state.currentBoss) b.classList.add('defeated');
+
+            if(i === state.currentBoss) b.classList.add('active');
+
+        }
+
+    }
+
+
+
+    function buyWeapon(type) {
+
+        const weapons = {
+
+            'stick': { name: '木棍', bonus: 8, maxDur: 2, dur: 2, price: 100 },
+
+            'pipe': { name: '钢管', bonus: 15, maxDur: 4, dur: 4, price: 250 },
+
+            'blade': { name: '大刀', bonus: 25, maxDur: 3, dur: 3, price: 600 }
+
+        };
+
+        let w = weapons[type];
+
+        if(state.money >= w.price) {
+
+            state.money -= w.price;
+
+            state.weapon = w;
+
+            addLog(`装备了 ${w.name}，复仇的胜算提升了。`, "var(--gold)");
+
+            updateUI();
+
+        } else {
+
+            addLog("钱不够，在这个城市没有钱寸步难行。", "var(--danger)");
+
+        }
+
+    }
+
+
+
+    function buyIntel() {
+
+        if(state.money >= 80) {
+
+            state.money -= 80;
+
+            state.intel += 10;
+
+            addLog("通过黑客手段获取了敌人的巡逻路径。");
+
+            updateUI();
+
+        }
+
+    }
+
+
+
+    function resetDeaths() {
+
+        if(state.money >= 400) {
+
+            state.money -= 400;
+
+            state.deathCount = 0;
+
+            addLog("在祭坛前洗净了罪孽，死亡计数重置。", "cyan");
+
+            updateUI();
+
+        }
+
+    }
+
+
+
+    function strike() {
+
+        let rate = calculateWinRate() / 100;
+
+       
+
+        if(Math.random() < rate) {
+
+            // 成功
+
+            addLog(`复仇成功！击败了第 ${state.currentBoss + 1} 个仇家。`, "#4CAF50");
+
+            state.currentBoss++;
+
+            state.money += 400;
+
+            state.intel = Math.floor(state.intel / 2); // 消耗情报
+
+           
+
+            if(state.weapon) {
+
+                state.weapon.dur--;
+
+                if(state.weapon.dur <= 0) {
+
+                    addLog(`${state.weapon.name} 在激战中折断了！`, "orange");
+
+                    state.weapon = null;
+
+                }
+
+            }
+
+
+
+            if(state.currentBoss >= 5) {
+
+                alert("血债已偿。你最终的年龄是 " + state.age + " 岁。你赢得了救赎。");
+
+                location.reload();
+
+            }
+
+        } else {
+
+            // 失败
+
+            state.deathCount++;
+
+            state.age += state.deathCount;
+
+            addLog(`突袭失败！你被打成重伤，老去了 ${state.deathCount} 岁。`, "var(--danger)");
+
+           
+
+            if(state.weapon) {
+
+                state.weapon.dur -= 2; // 失败时武器损耗更重
+
+                if(state.weapon.dur <= 0) {
+
+                    addLog(`你在败北时丢失了武器。`, "orange");
+
+                    state.weapon = null;
+
+                }
+
+            }
+
+
+
+            if(state.age >= 75) {
+
+                alert("你太老了... 仇恨随风而逝，你失败了。");
+
+                location.reload();
+
+            }
+
+        }
+
+        updateUI();
+
+    }
+
+
+
+    updateUI();
+
+</script>
+
+</body>
+
+</html>
